@@ -39,16 +39,19 @@ TX        GPIO2     D3
 
 
 //Variables globales para el WiFi
+//#define WLAN_SSID       "WLAN_F5L2"
+//#define WLAN_PASS       "H496N64Vf56H6iR4DVi9"
 #define WLAN_SSID       "TELEPORTE.es 0D8_927750750"
 #define WLAN_PASS       "RqnMiaPe@#76:01+"
 #define AIO_SERVER      "192.168.2.106"
 #define AIO_SERVERPORT  1883                   //8883 para SSL
 
-WiFiClient client;                                                                            //Crea un cliente ESP8266. Usar WiFiClientSecure para cliente SSL
-Adafruit_MQTT_Client mqtt(&client, AIO_SERVER, AIO_SERVERPORT);                               //Crea el cliente MQTT
-Adafruit_MQTT_Publish canalUsuario = Adafruit_MQTT_Publish(&mqtt, "casa/usuario");            //Publicar en un canal el nombre del usuario. El nombre del canal es "canalUsuario"
-Adafruit_MQTT_Subscribe canalMusica = Adafruit_MQTT_Subscribe(&mqtt, "casa/musica");          //Suscribirse a un canal que permite encender y apagar la música. El nombre del canal es "canalMusica"
-Adafruit_MQTT_Subscribe canalVolumen = Adafruit_MQTT_Subscribe(&mqtt, "casa/musica/volumen"); //Suscribirse a un canal que regula el volumen del altavoz. El nombre del canal es "canalVolumen"
+WiFiClient client;                                                                                //Crea un cliente ESP8266. Usar WiFiClientSecure para cliente SSL
+Adafruit_MQTT_Client mqtt(&client, AIO_SERVER, AIO_SERVERPORT);                                   //Crea el cliente MQTT
+Adafruit_MQTT_Publish canalUsuario = Adafruit_MQTT_Publish(&mqtt, "casa/usuario");                //Publicar en un canal el nombre del usuario. El nombre del canal es "canalUsuario"
+Adafruit_MQTT_Subscribe canalMusica = Adafruit_MQTT_Subscribe(&mqtt, "casa/musica");              //Suscribirse a un canal que permite encender y apagar la música. El nombre del canal es "canalMusica"
+Adafruit_MQTT_Subscribe canalVolumen = Adafruit_MQTT_Subscribe(&mqtt, "casa/musica/volumen");     //Suscribirse a un canal que regula el volumen del altavoz. El nombre del canal es "canalVolumen"
+Adafruit_MQTT_Subscribe canalSiguiente = Adafruit_MQTT_Subscribe(&mqtt, "casa/musica/siguiente"); //Suscribirse a un canal que permite pasar de canción. El nombre del canal es "canalSiguiente"
 
 
 
@@ -176,7 +179,7 @@ void publishInChannel(String user)
 
 
 /*
- * Recibe la orden de encencer o apagar la música del canal "canalMusica" y el valor del volumen del canal "canalVolumen".
+ * Recibe la orden de encencer o apagar la música del canal "canalMusica", el valor del volumen del canal "canalVolumen" y la orden de pasar a la siguiente canción del canal "canalSiguiente".
  */
 void subscribeFromChannel()
 {
@@ -202,6 +205,14 @@ void subscribeFromChannel()
       Serial.print("VOLUME = ");
       Serial.println(atoi((char *)canalVolumen.lastread));
       myDFPlayer.volume(atoi((char *)canalVolumen.lastread));
+    }
+    else if (subscription == &canalSiguiente)
+    {
+      if (!strcmp((char *)canalSiguiente.lastread, "OFF"))
+      {
+        Serial.println("NEXT SONG");
+        nextSong();
+      }
     }
   }
 }
@@ -280,9 +291,10 @@ void setup()
   //Inicializa la WiFi
   WIFI_connect();
 
-  //Suscripción a los canales "canalMusica" y "canalVolumen".
+  //Suscripción a los canales "canalMusica", "canalVolumen" y "canalSiguiente".
   mqtt.subscribe(&canalMusica);
   mqtt.subscribe(&canalVolumen);
+  mqtt.subscribe(&canalSiguiente);
 
   //Inicializa el LED
   pinMode(LED_GPIO, OUTPUT);
@@ -298,7 +310,7 @@ void setup()
   {
     while(true);
   }
-  myDFPlayer.volume(10);
+  myDFPlayer.volume(15);
 
 
   Serial.println("RFID y MP3 conectados.\n");
